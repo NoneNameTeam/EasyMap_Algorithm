@@ -1,0 +1,108 @@
+{
+	"abstract" : true,
+	"artifacts" : 
+	[
+		{
+			"path" : "C:/vcpkgpack/vcpkg-master/vcpkg_m/installed/x64-windows-static/debug/lib/cpprest_2_10d.lib"
+		}
+	],
+	"backtrace" : 5,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"include",
+			"find_package",
+			"set_target_properties"
+		],
+		"files" : 
+		[
+			"C:/vcpkgpack/vcpkg-master/vcpkg_m/installed/x64-windows-static/share/cpprestsdk/cpprestsdk-targets.cmake",
+			"C:/vcpkgpack/vcpkg-master/vcpkg_m/installed/x64-windows-static/share/cpprestsdk/cpprestsdk-config.cmake",
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 2
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 36,
+				"parent" : 0
+			},
+			{
+				"file" : 1,
+				"parent" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 25,
+				"parent" : 2
+			},
+			{
+				"file" : 0,
+				"parent" : 3
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 58,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 60,
+				"parent" : 4
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "cpprestsdk::cpprest::@6890427a1f51a3e7e1df",
+	"imported" : true,
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 6,
+			"id" : "cpprestsdk::cpprestsdk_zlib_internal::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 6,
+			"id" : "cpprestsdk::cpprestsdk_brotli_internal::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 6,
+			"fragment" : "Winhttp.lib"
+		},
+		{
+			"backtrace" : 6,
+			"fragment" : "httpapi.lib"
+		},
+		{
+			"backtrace" : 6,
+			"fragment" : "bcrypt.lib"
+		},
+		{
+			"backtrace" : 6,
+			"fragment" : "crypt32.lib"
+		}
+	],
+	"local" : true,
+	"name" : "cpprestsdk::cpprest",
+	"nameOnDisk" : "cpprest_2_10d.lib",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sources" : [],
+	"type" : "STATIC_LIBRARY"
+}
