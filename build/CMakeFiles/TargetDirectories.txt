@@ -1,3 +1,0 @@
-D:/vscode/导航/build/CMakeFiles/Astar.dir
-D:/vscode/导航/build/CMakeFiles/edit_cache.dir
-D:/vscode/导航/build/CMakeFiles/rebuild_cache.dir

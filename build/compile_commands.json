@@ -1,8 +1,0 @@
-[
-{
-  "directory": "D:/vscode/导航/build",
-  "command": "D:\\x86_64-8.1.0-release-posix-seh-rt_v6-rev0\\mingw64\\bin\\g++.exe -DCPPREST_EXCLUDE_WEBSOCKETS=1 -D_NO_ASYNCRTIMP -D_NO_PPLXIMP @CMakeFiles/Astar.dir/includes_CXX.rsp -g -std=c++11 -o CMakeFiles\\Astar.dir\\Astar.cpp.obj -c D:\\vscode\\导航\\Astar.cpp",
-  "file": "D:/vscode/导航/Astar.cpp",
-  "output": "CMakeFiles/Astar.dir/Astar.cpp.obj"
-}
-]
