@@ -1,161 +1,290 @@
 #include <iostream>
 #include <vector>
-#include <array>
 #include <cmath>
 #include <queue>
-#include <functional>
-#include <unordered_map>
 #include <algorithm>
 #include <limits>
-#include <cpprest/http_client.h>
-#include <cpprest/json.h>
-#include <cpprest/http_listener.h>
+#include <memory>
+#include <string>
+#include <functional> 
 
-//创建http服务器类
+#include <cpprest/http_listener.h>
+#include <cpprest/json.h>
+#include <cpprest/uri.h>
+
+using namespace web;
+using namespace web::http;
+using namespace web::http::experimental::listener;
+
+std::string t2s(const utility::string_t& t) {
+    return utility::conversions::to_utf8string(t);
+}
 
 struct bian {
-    int loc;//边终点
-    double weight;//权重
+    int loc;      
+    double weight;
 };
 
 struct point{
-    double x,y;//节点坐标
+    double x, y;
 };
 
 class Astar
 {
 private:
-    int n;//节点总数
-    std::vector<std::vector<bian>> graph;//邻接表
-    std::vector<point> points;//节点坐标数组
-    std::vector<int> ans;//返回节点顺序答案的数组
-    std::vector<int> parents;//父节点数组
+    int n;
+    std::vector<std::vector<bian>> graph;
+    std::vector<point> points;
+    std::vector<int> ans;
+    std::vector<int> parents;
     std::priority_queue<std::pair<double,int>,std::vector<std::pair<double,int>>,std::greater<std::pair<double,int>>> pq;
-    int start,target;//起点和终点
-    std::vector<double> f,g;//f估计代价f = g + man()，g为实际代价
-    std::vector<bool> visited;//已遍历过的节点无需再遍历
-    int out;//判断是否找到路径
+    int start, target;
+    std::vector<double> f, g;
+    std::vector<bool> visited;
+    int out; 
+
 public:
-    void initialize()
+    Astar() : n(0), start(0), target(0), out(0) {}
+
+    void initialize(int node_count)
     {
-        // 清空所有容器
+        n = node_count;
         graph.clear();
         ans.clear();
         f.clear();
         g.clear();
         visited.clear();
         points.clear();
+        parents.clear();
         
-        // 清空优先队列
-        while (!pq.empty()) pq.pop();
+        std::priority_queue<std::pair<double,int>,std::vector<std::pair<double,int>>,std::greater<std::pair<double,int>>> empty_pq;
+        pq.swap(empty_pq);
         
-        // 根据n的大小重新初始化
         if (n > 0)
         {
             graph.resize(n);
             f.resize(n, std::numeric_limits<double>::max());
             g.resize(n, std::numeric_limits<double>::max());
             visited.resize(n, false);
-            parents.resize(n,-1);
-            points.resize(n,{0,0});
-            out=0;
+            parents.resize(n, -1);
+            points.resize(n, {0,0});
+            out = 0;
         }
     }
 
-    void get_size()
-    {
-        std::cin>>n;//http请求告诉我节点数量n
-        initialize();
+    double safe_get_double(const json::value& v) {
+        if (v.is_double()) return v.as_double();
+        if (v.is_integer()) return static_cast<double>(v.as_integer());
+        throw std::runtime_error("Type mismatch: expected number");
     }
 
-    void get_graph()
+    std::string load_from_json(const json::value& j_data)
     {
-        //http请求输入邻接表
-        //http请求输入节点坐标
-        //http请求起点终点start,target
+        try {
+            if(!j_data.has_field(U("n")) || !j_data.has_field(U("start")) || !j_data.has_field(U("target"))) {
+                return "Missing required fields: n, start, or target";
+            }
+
+            int node_num = j_data.at(U("n")).as_integer();
+            if (node_num <= 0) return "Invalid node count (n)";
+
+            initialize(node_num);
+
+            // 【修改点 1】：输入 ID 减 1，转换为内部 0-based 索引
+            // 假设外部传来的 start=1，内部存储为 0
+            start = j_data.at(U("start")).as_integer() - 1;
+            target = j_data.at(U("target")).as_integer() - 1;
+
+            // 检查边界：现在合法的范围是内部索引 0 到 n-1 (对应外部 1 到 n)
+            if (start < 0 || start >= n || target < 0 || target >= n) {
+                return "Start or Target ID out of bounds (must be between 1 and n)";
+            }
+
+            // 读取坐标
+            // JSON 数组的第 0 个元素对应 内部索引 0 (外部 ID 1)
+            // JSON 数组的第 1 个元素对应 内部索引 1 (外部 ID 2)
+            // 所以这里循环逻辑不需要变
+            if (j_data.has_field(U("coords"))) {
+                const auto& j_coords = j_data.at(U("coords")).as_array();
+                for(int i = 0; i < n && i < static_cast<int>(j_coords.size()); ++i) {
+                    if(j_coords.at(i).has_field(U("x")) && j_coords.at(i).has_field(U("y"))) {
+                        points[i].x = safe_get_double(j_coords.at(i).at(U("x")));
+                        points[i].y = safe_get_double(j_coords.at(i).at(U("y")));
+                    }
+                }
+            }
+
+            // 读取边
+            if (j_data.has_field(U("edges"))) {
+                const auto& j_edges = j_data.at(U("edges")).as_array();
+                for(const auto& val : j_edges) {
+                    if(!val.has_field(U("u")) || !val.has_field(U("v")) || !val.has_field(U("w"))) continue;
+
+                    // 【修改点 2】：边的起点 u 和终点 v 也要减 1
+                    int u = val.at(U("u")).as_integer() - 1;
+                    int v = val.at(U("v")).as_integer() - 1;
+                    double w = safe_get_double(val.at(U("w")));
+                    
+                    // 范围检查
+                    if(u >= 0 && u < n && v >= 0 && v < n && w >= 0) {
+                        graph[u].push_back({v, w});
+                    }
+                }
+            }
+            return ""; 
+        } catch (const std::exception& e) {
+            return std::string("JSON Parse Exception: ") + e.what();
+        }
     }
 
-    double O(int a,int target)//欧几里得距离启发函数
+    double heuristic(int a, int target_idx)
     {
-        double x=points[a].x-points[target].x;
-        double y=points[a].y-points[target].y;
-        return std::sqrt(x*x+y*y);
+        double dx = points[a].x - points[target_idx].x;
+        double dy = points[a].y - points[target_idx].y;
+        return std::hypot(dx, dy); 
     }
 
     void Astarmain()
     {
-        g[start]=0;
-        f[start]=g[start]+O(start,target);
-        pq.push({f[start],start});
+        // 核心算法内部依然使用 0 ~ n-1，保持高效，无需改动
+        if(start < 0 || start >= n || target < 0 || target >= n) return;
+
+        g[start] = 0;
+        f[start] = heuristic(start, target);
+        pq.push({f[start], start});
+        
+        parents[start] = -1; 
 
         while(!pq.empty())
         {
             std::pair<double, int> top = pq.top();
             pq.pop();
-            
             int u = top.second;
-            // 如果该节点已经被处理过（即找到了最短路），跳过
+            
             if (visited[u]) continue;
-            visited[u] = true; // 标记为已处理
+            visited[u] = true; 
 
-            //判断是否到达终点
             if (u == target) {
-                // 回溯路径
+                out = 1;
                 int curr = target;
                 while (curr != -1) { 
                     ans.push_back(curr);
                     curr = parents[curr];
                 }
-                // 反转数组输出
                 std::reverse(ans.begin(), ans.end());
-                out=1;
                 return;
             }
 
-            //扩展邻居节点
             for (const auto& e : graph[u]) {
                 int v = e.loc;
                 double w = e.weight;
 
-                // 如果 v 已经在闭集中，无需再处理
                 if (visited[v]) continue;
 
-                // 如果经由 u 到达 v 的距离更短
                 if (g[u] + w < g[v]) {
-                    g[v] = g[u] + w;              // 更新 G 值
-                    f[v] = g[v] + O(v, target);   // 更新 F 值 (F = G + H)
-                    parents[v] = u;               // 记录父节点
-                    pq.push({f[v], v});           // 加入优先队列
+                    g[v] = g[u] + w;              
+                    f[v] = g[v] + heuristic(v, target);   
+                    parents[v] = u;               
+                    pq.push({f[v], v});           
                 }
             }
         }
     }
 
-    int get_out()
+    int get_out() const { return out; }
+    double get_min() const { return g[target]; }
+    const std::vector<int>& get_ans() const { return ans; }
+};
+
+class PathfindingServer
+{
+public:
+    PathfindingServer(utility::string_t url) : m_listener(url)
     {
-        return out;
+        m_listener.support(methods::POST, std::bind(&PathfindingServer::handle_post, this, std::placeholders::_1));
     }
 
-    int get_min()
+    void open() { m_listener.open().wait(); }
+    void close() { m_listener.close().wait(); }
+
+private:
+    void handle_post(http_request request)
     {
-        return g[target];
+        std::cout << "Received request (1-based ID mode)..." << std::endl;
+
+        request.extract_json()
+        .then([=](pplx::task<json::value> task) {
+            try {
+                json::value request_data = task.get(); 
+                
+                Astar worker;
+                json::value response_data;
+
+                std::string error_msg = worker.load_from_json(request_data);
+                if (!error_msg.empty()) {
+                    std::cerr << "Bad Request: " << error_msg << std::endl;
+                    response_data[U("status")] = json::value::string(U("error"));
+                    response_data[U("message")] = json::value::string(utility::conversions::to_string_t(error_msg));
+                    request.reply(status_codes::BadRequest, response_data);
+                    return;
+                }
+
+                worker.Astarmain();
+
+                if(worker.get_out() == 0) {
+                    response_data[U("status")] = json::value::string(U("failed"));
+                    response_data[U("message")] = json::value::string(U("No path found"));
+                    response_data[U("path")] = json::value::array();
+                    response_data[U("distance")] = json::value::number(-1);
+                } else {
+                    response_data[U("status")] = json::value::string(U("success"));
+                    
+                    std::vector<json::value> json_path_vec;
+                    const auto& path_indices = worker.get_ans();
+                    for(int node_idx : path_indices) {
+                        // 【修改点 3】：输出结果时，将内部索引加 1，变回人类直觉的 ID
+                        json_path_vec.push_back(json::value::number(node_idx + 1));
+                    }
+                    response_data[U("path")] = json::value::array(json_path_vec);
+                    response_data[U("distance")] = json::value::number(worker.get_min());
+                }
+
+                request.reply(status_codes::OK, response_data);
+            } 
+            catch (const http_exception& e) {
+                std::cerr << "HTTP Exception: " << e.what() << std::endl;
+                request.reply(status_codes::BadRequest, json::value::string(U("Invalid JSON body")));
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Internal Error: " << e.what() << std::endl;
+                json::value err;
+                err[U("error")] = json::value::string(U("Internal Server Error"));
+                request.reply(status_codes::InternalError, err);
+            }
+        }).wait(); 
     }
+
+    http_listener m_listener;
 };
 
 int main()
 {
-    //打开http服务器持续监听后端请求
+    utility::string_t address = U("http://*:8080");
+    PathfindingServer server(address);
 
-    //收到http请求
-    Astar worker;
-    worker.get_size();
-    worker.get_graph();
-    worker.Astarmain();
+    try {
+        server.open();
+        std::cout << "A* Server (1-based ID) listening on " << t2s(address) << "..." << std::endl;
+        std::cout << "Press Enter to exit." << std::endl;
+        
+        std::string line;
+        std::getline(std::cin, line);
 
-    if(worker.get_out()==0) {
-        //返回后端无从start到target的路径的信息
-    }else{
-        //返回后端需要的最短节点顺序如节点1到5的最短路径为1，3，4，5，即给后端ans数组
-        //返回后端需要的最短路径路程,即worker.get_min()的结果
+        server.close();
     }
+    catch (const std::exception& e) {
+        std::cerr << "Error starting server: " << e.what() << std::endl;
+    }
+
+    return 0;
 }
