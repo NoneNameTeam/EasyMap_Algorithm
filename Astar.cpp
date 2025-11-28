@@ -250,7 +250,6 @@ private:
             }
         }).wait(); 
     }
-
     http_listener m_listener;
 };
 
@@ -258,7 +257,6 @@ int main()
 {
     utility::string_t address = U("http://*:8080");
     PathfindingServer server(address);
-
     try {
         server.open();
         std::cout << "A* Server (1-based ID) listening on " << t2s(address) << "..." << std::endl;
@@ -272,6 +270,5 @@ int main()
     catch (const std::exception& e) {
         std::cerr << "Error starting server: " << e.what() << std::endl;
     }
-
     return 0;
 }
