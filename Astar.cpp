@@ -90,20 +90,13 @@ public:
 
             initialize(node_num);
 
-            // 【修改点 1】：输入 ID 减 1，转换为内部 0-based 索引
-            // 假设外部传来的 start=1，内部存储为 0
             start = j_data.at(U("start")).as_integer() - 1;
             target = j_data.at(U("target")).as_integer() - 1;
 
-            // 检查边界：现在合法的范围是内部索引 0 到 n-1 (对应外部 1 到 n)
             if (start < 0 || start >= n || target < 0 || target >= n) {
                 return "Start or Target ID out of bounds (must be between 1 and n)";
             }
 
-            // 读取坐标
-            // JSON 数组的第 0 个元素对应 内部索引 0 (外部 ID 1)
-            // JSON 数组的第 1 个元素对应 内部索引 1 (外部 ID 2)
-            // 所以这里循环逻辑不需要变
             if (j_data.has_field(U("coords"))) {
                 const auto& j_coords = j_data.at(U("coords")).as_array();
                 for(int i = 0; i < n && i < static_cast<int>(j_coords.size()); ++i) {
@@ -114,18 +107,14 @@ public:
                 }
             }
 
-            // 读取边
             if (j_data.has_field(U("edges"))) {
                 const auto& j_edges = j_data.at(U("edges")).as_array();
                 for(const auto& val : j_edges) {
                     if(!val.has_field(U("u")) || !val.has_field(U("v")) || !val.has_field(U("w"))) continue;
-
-                    // 【修改点 2】：边的起点 u 和终点 v 也要减 1
                     int u = val.at(U("u")).as_integer() - 1;
                     int v = val.at(U("v")).as_integer() - 1;
                     double w = safe_get_double(val.at(U("w")));
                     
-                    // 范围检查
                     if(u >= 0 && u < n && v >= 0 && v < n && w >= 0) {
                         graph[u].push_back({v, w});
                     }
@@ -146,7 +135,6 @@ public:
 
     void Astarmain()
     {
-        // 核心算法内部依然使用 0 ~ n-1，保持高效，无需改动
         if(start < 0 || start >= n || target < 0 || target >= n) return;
 
         g[start] = 0;
@@ -242,7 +230,6 @@ private:
                     std::vector<json::value> json_path_vec;
                     const auto& path_indices = worker.get_ans();
                     for(int node_idx : path_indices) {
-                        // 【修改点 3】：输出结果时，将内部索引加 1，变回人类直觉的 ID
                         json_path_vec.push_back(json::value::number(node_idx + 1));
                     }
                     response_data[U("path")] = json::value::array(json_path_vec);
