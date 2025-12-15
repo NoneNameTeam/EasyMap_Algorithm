@@ -1,0 +1,48 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+doc/
+*.md
+
+# Build artifacts
+build/
+/build
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+*.old
+
+# Test files
+test/
+tests/
+*.test
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Docker files (no need to copy these into the image)
+Dockerfile*
+docker-compose*.yml
+.dockerignore

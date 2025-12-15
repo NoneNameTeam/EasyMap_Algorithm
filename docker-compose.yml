@@ -1,0 +1,46 @@
+services:
+  astar-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: easymap-astar:latest
+    container_name: astar-pathfinding
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      # Add any environment variables here if needed in the future
+      - TZ=UTC
+    networks:
+      - astar-network
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    # Note: Health check is disabled as the API doesn't have a dedicated health endpoint
+    # Uncomment and modify if you add a health check endpoint to your API
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+    #   interval: 30s
+    #   timeout: 3s
+    #   retries: 3
+    #   start_period: 10s
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  astar-network:
+    driver: bridge
+
+# Volumes section (for future use if needed)
+# volumes:
+#   astar-data:
